@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "nombre": "María Gómez",
+    "asignatura": "Matemáticas",
+    "email": "maria.gomez@carlemany.edu",
+    "horarios": ["Lunes 10:00", "Martes 12:00"]
+  },
+  {
+    "id": 2,
+    "nombre": "Carlos Ruiz",
+    "asignatura": "Programación",
+    "email": "carlos.ruiz@carlemany.edu",
+    "horarios": ["Miércoles 11:00", "Viernes 09:00"]
+  }
+]

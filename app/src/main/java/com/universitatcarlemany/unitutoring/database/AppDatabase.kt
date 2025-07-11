@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.universitatcarlemany.unitutoring.model.Reservation
 
-@Database(entities = [Reservation::class], version = 2)
+@Database(entities = [Reservation::class], version = 3)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun reservationDao(): ReservationDao
 

@@ -74,6 +74,7 @@ fun TeacherDetailScreen(
                     val intent = Intent(context, ReservationActivity::class.java).apply {
                         putExtra("teacherName", name)
                         putExtra("subject", subject)
+                        putStringArrayListExtra("schedule", ArrayList(schedule))
                     }
                     context.startActivity(intent)
                 },

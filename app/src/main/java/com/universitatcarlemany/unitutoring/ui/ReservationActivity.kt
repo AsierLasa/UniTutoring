@@ -23,6 +23,7 @@ import com.universitatcarlemany.unitutoring.database.AppDatabase
 import com.universitatcarlemany.unitutoring.model.Reservation
 import com.universitatcarlemany.unitutoring.ui.theme.UniTutoringTheme
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 class ReservationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,18 +35,19 @@ class ReservationActivity : ComponentActivity() {
 
         val teacherName = intent.getStringExtra("teacherName") ?: "Profesor/a"
         val subject = intent.getStringExtra("subject") ?: ""
+        val schedule = intent.getStringArrayListExtra("schedule") ?: arrayListOf()
 
         setContent {
             UniTutoringTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    ReservationForm(teacherName, subject)
+                    ReservationForm(teacherName, subject, schedule)
                 }
             }
         }
     }
 
     @Composable
-    fun ReservationForm(teacherName: String, subject: String) {
+    fun ReservationForm(teacherName: String, subject: String, schedule: List<String>) {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
         var date by remember { mutableStateOf("") }
@@ -76,28 +78,79 @@ class ReservationActivity : ComponentActivity() {
 
             Button(
                 onClick = {
-                    // Validaciones
-                    if (date.isBlank() || !Regex("""\d{4}-\d{2}-\d{2}""").matches(date)) {
+                    val dateTrimmed = date.trim()
+                    val timeTrimmed = time.trim()
+
+                    if (dateTrimmed.isBlank() || !Regex("""^\d{4}-\d{2}-\d{2}$""").matches(dateTrimmed)) {
                         Toast.makeText(context, "Introduce una fecha válida (ej. 2025-10-10)", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    if (time.isBlank() || !Regex("""\d{2}:\d{2}""").matches(time)) {
+
+                    if (timeTrimmed.isBlank() || !Regex("""^\d{2}:\d{2}$""").matches(timeTrimmed)) {
                         Toast.makeText(context, "Introduce una hora válida (ej. 15:30)", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    val fechaIntroducida = try {
+                        LocalDate.parse(dateTrimmed)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Formato de fecha incorrecto", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    val diaSemanaIntroducido = fechaIntroducida.dayOfWeek.name.lowercase()
+                    val diasCompatibles = mapOf(
+                        "lunes" to "monday",
+                        "martes" to "tuesday",
+                        "miércoles" to "wednesday",
+                        "jueves" to "thursday",
+                        "viernes" to "friday",
+                        "sábado" to "saturday",
+                        "domingo" to "sunday"
+                    )
+
+                    val isMatchingDay = schedule.any { horario ->
+                        val parts = horario.split(" ")
+                        if (parts.size == 2) {
+                            val dia = parts[0].lowercase()
+                            diasCompatibles[dia] == diaSemanaIntroducido
+                        } else false
+                    }
+
+                    val isMatchingTime = schedule.any { horario ->
+                        val parts = horario.split(" ")
+                        if (parts.size == 2) {
+                            val dia = parts[0].lowercase()
+                            val hora = parts[1]
+                            val esDiaValido = diasCompatibles[dia] == diaSemanaIntroducido
+                            esDiaValido && hora == timeTrimmed
+                        } else false
+                    }
+
+                    if (!isMatchingDay) {
+                        Toast.makeText(context, "La fecha no coincide con el día en que el profesor ofrece tutorías.", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    if (!isMatchingTime) {
+                        Toast.makeText(context, "La hora no está disponible para ese día.", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
 
                     val reservation = Reservation(
                         teacherName = teacherName,
                         subject = subject,
-                        date = date,
-                        time = time
+                        date = dateTrimmed,
+                        time = timeTrimmed
                     )
 
                     val db = AppDatabase.getDatabase(context)
                     scope.launch {
                         db.reservationDao().insertReservation(reservation)
                         createNotificationChannel(context)
-                        showReservationNotification(context, teacherName, date, time)
+                        if (NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+                            showReservationNotification(context, teacherName, dateTrimmed, timeTrimmed)
+                        }
                         Toast.makeText(context, "Reserva guardada correctamente", Toast.LENGTH_SHORT).show()
                         finish()
                     }
@@ -148,5 +201,10 @@ class ReservationActivity : ComponentActivity() {
         NotificationManagerCompat.from(context).notify(1001, builder.build())
     }
 }
+
+
+
+
+
 
 

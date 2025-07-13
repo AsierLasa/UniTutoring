@@ -1,16 +1,25 @@
 [versions]
 agp = "8.10.1"
-kotlin = "2.0.21"
-coreKtx = "1.16.0"
+kotlin = "2.0.0"
+coreKtx = "1.13.1"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.9.1"
 activityCompose = "1.10.1"
-composeBom = "2024.09.00"
+composeBom = "2024.06.00"
 appcompat = "1.7.1"
 material = "1.12.0"
 activity = "1.10.1"
+room = "2.7.2"
+gson = "2.11.0"
+ksp = "2.0.0-1.0.21" # Versión de KSP compatible con Kotlin 2.0.0
+androidxMaterialIconsExtended = "1.6.8"
+work = "2.9.0"
+workRuntimeKtx = "2.10.2"
+androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version = "2.9.0" }
+
+
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,9 +39,20 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version = "1.6.7" } # para AlternateEmail, Schedule
+work_runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtx" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 

@@ -80,7 +80,7 @@ fun ReservationListScreen(onNavigateBack: () -> Unit) {
             val prompt = "Soy un estudiante universitario y tengo una tutoría de '${reservation.subject}'. Sugiere 5 preguntas o temas clave que debería preparar para aprovechar al máximo la sesión con mi profesor, ${reservation.teacherName}. La respuesta debe ser una lista en español, clara y concisa."
 
             try {
-                // Simulación de la llamada a la API de Gemini
+                // Simulación de la llamada a la API de Gemini (Prompts)
                 kotlinx.coroutines.delay(2000) // Simular retraso de red
                 val resultText = """
                     Aquí tienes 5 temas clave para preparar tu tutoría de ${reservation.subject}:

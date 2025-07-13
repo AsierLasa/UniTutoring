@@ -28,7 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     // CORRECCIÓN: Se usa el método no obsoleto para la migración destructiva.
                     // Permite a Room recrear la base de datos si no se proporciona una migración.
-                    .fallbackToDestructiveMigration(true)
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

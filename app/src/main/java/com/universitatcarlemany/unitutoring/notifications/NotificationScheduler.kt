@@ -72,7 +72,7 @@ object NotificationScheduler {
      * @param context Contexto de la aplicación.
      */
     fun scheduleDebugReminder(context: Context) {
-        val delay = Duration.ofSeconds(10)
+        val delay = Duration.ofSeconds(5)
         val now = LocalDateTime.now()
 
         val inputData = Data.Builder()

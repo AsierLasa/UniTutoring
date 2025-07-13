@@ -10,7 +10,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.gson.Gson
 import com.universitatcarlemany.unitutoring.database.AppDatabase
 import com.universitatcarlemany.unitutoring.model.Reservation
@@ -30,10 +33,6 @@ import kotlinx.coroutines.launch
  * Activity que muestra la lista de reservas del usuario y permite gestionarlas.
  */
 class ReservationListActivity : ComponentActivity() {
-    /**
-     * Se ejecuta al crear la Activity.
-     * Configura el contenido de la UI usando Jetpack Compose.
-     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -48,11 +47,6 @@ class ReservationListActivity : ComponentActivity() {
 
 /**
  * Composable principal que define la estructura de la pantalla "Mis Reservas".
- *
- * Incluye una barra superior, la lista de reservas y un diálogo de confirmación para
- * cancelar una reserva.
- *
- * @param onNavigateBack Callback para ejecutar la acción de volver a la pantalla anterior.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,16 +56,56 @@ fun ReservationListScreen(onNavigateBack: () -> Unit) {
     var reservations by remember { mutableStateOf<List<Reservation>>(emptyList()) }
     var showCancelDialog by remember { mutableStateOf<Reservation?>(null) }
 
-    /**
-     * Función para recargar la lista de reservas desde la base de datos.
-     */
+    // --- Estados para la funcionalidad de Gemini ---
+    var showGeminiDialog by remember { mutableStateOf(false) }
+    var geminiResponse by remember { mutableStateOf("") }
+    var isLoadingGemini by remember { mutableStateOf(false) }
+    var currentReservationForGemini by remember { mutableStateOf<Reservation?>(null) }
+
+
     fun refreshReservations() {
         scope.launch {
             reservations = AppDatabase.getDatabase(context).reservationDao().getAllReservations()
         }
     }
 
-    // Carga las reservas iniciales cuando la pantalla se muestra por primera vez.
+    // --- Función para llamar a la API de Gemini ---
+    fun fetchGeminiSuggestions(reservation: Reservation) {
+        scope.launch {
+            isLoadingGemini = true
+            geminiResponse = ""
+            currentReservationForGemini = reservation
+            showGeminiDialog = true
+
+            val prompt = "Soy un estudiante universitario y tengo una tutoría de '${reservation.subject}'. Sugiere 5 preguntas o temas clave que debería preparar para aprovechar al máximo la sesión con mi profesor, ${reservation.teacherName}. La respuesta debe ser una lista en español, clara y concisa."
+
+            try {
+                // Simulación de la llamada a la API de Gemini
+                kotlinx.coroutines.delay(2000) // Simular retraso de red
+                val resultText = """
+                    Aquí tienes 5 temas clave para preparar tu tutoría de ${reservation.subject}:
+
+                    1.  **Repasar los últimos conceptos:** Revisa los temas más recientes vistos en clase. ¿Hay algo que no quedó 100% claro?
+
+                    2.  **Ejercicios específicos:** Elige 1 o 2 ejercicios en los que te hayas atascado. Intenta explicarle al profesor dónde exactamente encuentras la dificultad.
+
+                    3.  **Dudas conceptuales:** Piensa en las ideas teóricas. ¿Hay algún concepto abstracto que te cueste visualizar o aplicar?
+
+                    4.  **Relación con temas anteriores:** Pregunta cómo se conecta el tema actual con lo que ya habéis visto. Esto te ayudará a construir un mapa mental más sólido.
+
+                    5.  **Próximos pasos:** Consulta sobre los siguientes temas de la asignatura o posibles aplicaciones prácticas de lo que estáis aprendiendo.
+                """.trimIndent()
+
+                geminiResponse = resultText
+
+            } catch (e: Exception) {
+                geminiResponse = "Error al contactar con el asistente de IA. Por favor, inténtalo de nuevo."
+            } finally {
+                isLoadingGemini = false
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         refreshReservations()
     }
@@ -80,11 +114,7 @@ fun ReservationListScreen(onNavigateBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Mis Reservas") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
-                },
+                navigationIcon = { IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver") } },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -94,7 +124,6 @@ fun ReservationListScreen(onNavigateBack: () -> Unit) {
         }
     ) { paddingValues ->
         if (reservations.isEmpty()) {
-            // Muestra un mensaje centrado si la lista de reservas está vacía.
             Column(
                 modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -103,7 +132,6 @@ fun ReservationListScreen(onNavigateBack: () -> Unit) {
                 Text("Aún no tienes reservas.", style = MaterialTheme.typography.headlineSmall)
             }
         } else {
-            // Muestra la lista de reservas usando un LazyColumn para un rendimiento eficiente.
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
@@ -115,14 +143,9 @@ fun ReservationListScreen(onNavigateBack: () -> Unit) {
                         onCancel = { showCancelDialog = reservation },
                         onReschedule = {
                             scope.launch {
-                                // Para reprogramar, primero se cancela la reserva actual.
                                 AppDatabase.getDatabase(context).reservationDao().deleteReservation(reservation)
-
-                                // Se busca al profesor para obtener su horario completo.
                                 val teacher = TeacherRepository.getTeacherByName(context, reservation.teacherName)
                                 if (teacher != null) {
-                                    // CORRECCIÓN: Se usa la nueva estructura de 'availability'
-                                    // y se convierte a JSON para pasarla en el Intent.
                                     val availabilityJson = Gson().toJson(teacher.availability)
                                     val intent = Intent(context, ReservationActivity::class.java).apply {
                                         putExtra("name", teacher.name)
@@ -131,18 +154,27 @@ fun ReservationListScreen(onNavigateBack: () -> Unit) {
                                     }
                                     context.startActivity(intent)
                                     Toast.makeText(context, "Por favor, elige un nuevo horario", Toast.LENGTH_SHORT).show()
-                                    refreshReservations() // Se actualiza la lista en esta pantalla.
+                                    refreshReservations()
                                 } else {
                                     Toast.makeText(context, "Error: No se encontró al profesor", Toast.LENGTH_SHORT).show()
                                 }
                             }
-                        }
+                        },
+                        onPrepare = { fetchGeminiSuggestions(reservation) }
                     )
                 }
             }
         }
 
-        // Muestra un diálogo de confirmación si el usuario intenta cancelar una reserva.
+        if (showGeminiDialog) {
+            GeminiPreparationDialog(
+                isLoading = isLoadingGemini,
+                response = geminiResponse,
+                reservation = currentReservationForGemini,
+                onDismiss = { showGeminiDialog = false }
+            )
+        }
+
         showCancelDialog?.let { reservationToCancel ->
             AlertDialog(
                 onDismissRequest = { showCancelDialog = null },
@@ -174,20 +206,12 @@ fun ReservationListScreen(onNavigateBack: () -> Unit) {
     }
 }
 
-/**
- * Composable que representa una tarjeta individual para una reserva.
- *
- * Muestra los detalles de la reserva y proporciona botones para "Reprogramar" y "Cancelar".
- *
- * @param reservation El objeto [Reservation] que contiene los datos a mostrar.
- * @param onCancel Callback que se ejecuta cuando se pulsa el botón "Cancelar".
- * @param onReschedule Callback que se ejecuta cuando se pulsa el botón "Reprogramar".
- */
 @Composable
 fun ReservationCard(
     reservation: Reservation,
     onCancel: () -> Unit,
-    onReschedule: () -> Unit
+    onReschedule: () -> Unit,
+    onPrepare: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -195,16 +219,8 @@ fun ReservationCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = reservation.subject,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Con ${reservation.teacherName}",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Text(text = reservation.subject, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(text = "Con ${reservation.teacherName}", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.DateRange, "Fecha y hora", Modifier.size(18.dp))
@@ -212,21 +228,73 @@ fun ReservationCard(
                 Text("${reservation.date} a las ${reservation.time}", style = MaterialTheme.typography.bodyMedium)
             }
             Spacer(modifier = Modifier.height(16.dp))
+            // --- CORRECCIÓN: Se añaden los tres botones ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(onClick = onReschedule, modifier = Modifier.weight(1f)) {
-                    Text("Reprogramar")
+                Button(
+                    onClick = onPrepare,
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = "Preparar", modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Preparar", fontSize = 12.sp)
+                }
+                OutlinedButton(
+                    onClick = onReschedule,
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Text("Reprogramar", fontSize = 12.sp)
                 }
                 OutlinedButton(
                     onClick = onCancel,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
-                    Text("Cancelar")
+                    Text("Cancelar", fontSize = 12.sp)
                 }
             }
         }
     }
+}
+
+@Composable
+fun GeminiPreparationDialog(
+    isLoading: Boolean,
+    response: String,
+    reservation: Reservation?,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("✨ Asistente de Preparación") },
+        text = {
+            Column {
+                if (reservation != null) {
+                    Text(
+                        "Sugerencias para tu tutoría de ${reservation.subject}:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    Text(response, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
 }

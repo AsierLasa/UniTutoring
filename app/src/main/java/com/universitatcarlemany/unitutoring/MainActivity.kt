@@ -131,7 +131,7 @@ fun DashboardScreen(
                 icon = Icons.Default.Notifications,
                 onClick = {
                     NotificationScheduler.scheduleDebugReminder(context)
-                    Toast.makeText(context, "Notificación de prueba programada. Aparecerá en 10 segundos.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Notificación de prueba programada. Aparecerá en 5 segundos.", Toast.LENGTH_LONG).show()
                 },
                 isPrimary = false
             )
